@@ -1,8 +1,6 @@
 #!/bin/bash 
 # Usage: sudo ./Run-IPC-Commands.sh
 
-#!/bin/bash
-
 # Check if running as root
 if [ "$(id -u)" != "0" ]; then
     echo "This script must be run as root." >&2
@@ -12,13 +10,20 @@ fi
 # Update and upgrade the system
 sudo apt update && sudo apt upgrade -y
 
-# Install and enable SSH
-sudo apt -y install ssh
-sudo systemctl enable ssh 
+# Install necessary packages
+sudo apt -y install ssh xrdp bridge-utils cpu-checker libvirt-clients libvirt-daemon qemu qemu-kvm virt-manager net-tools
 
-# Install and enable xRDP
-sudo apt -y install xrdp
+# Enable services
+sudo systemctl enable ssh
 sudo systemctl enable xrdp
+
+# Configure network bridge
+sudo nmcli con add type bridge ifname br0 con-name br0
+sudo nmcli con modify br0 bridge.stp no
+sudo nmcli con add type bridge-slave ifname enp0s29f1 con-name br0-port master br0
+
+# Restart NetworkManager to apply bridge changes
+sudo systemctl restart NetworkManager
 
 # Disable GNOME animations (assuming GNOME is your desktop environment)
 gsettings set org.gnome.desktop.interface enable-animations false
@@ -35,23 +40,9 @@ else
     echo "Firewall not disabled. Consider adding specific firewall rules to allow connections to virtual machines and other devices."
 fi
 
-# Install virtualization packages
-sudo apt -y install bridge-utils cpu-checker libvirt-clients libvirt-daemon qemu qemu-kvm
-
-# Install and run Virtual Machine Manager
-sudo apt install virt-manager -y
-sudo virt-manager &
-
-# Install networking tools
-sudo apt install net-tools
-
-# Configure network bridge
-sudo nmcli con add type bridge ifname br0 con-name br0
-sudo nmcli con modify br0 bridge.stp no
-sudo nmcli con add type bridge-slave ifname enp0s29f1 con-name br0-port master br0
-
-# Restart NetworkManager to apply changes
-sudo systemctl restart NetworkManager
+# Delete unwanted network connections
+sudo nmcli con delete "Wired Connection 1"
+sudo nmcli con delete "Wired Connection 2"
 
 # Script execution complete
 echo "Setup script execution completed successfully."
